@@ -1,0 +1,424 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PAR-WO BLE</title>
+
+<style>
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: #18181b;
+  color: #f4f4f5;
+  font-family: Arial, sans-serif;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+
+.panel {
+  width: min(100%, 430px);
+  background: linear-gradient(180deg, #7a7a74 0%, #53544f 100%);
+  border-radius: 24px;
+  padding: 18px;
+  box-shadow: 0 18px 40px rgba(0,0,0,0.45);
+}
+
+.topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 18px;
+}
+
+.title {
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.ble-status {
+  border: 1px solid #3f3f46;
+  background: #27272a;
+  color: #d4d4d8;
+  border-radius: 999px;
+  padding: 6px 12px;
+  cursor: pointer;
+}
+
+.ble-status.connected { color: #86efac; }
+
+.sliders {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+  background: rgba(24,24,27,0.28);
+  border-radius: 20px;
+  padding: 18px 10px;
+}
+
+.slider-block {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.value {
+  font-size: 20px;
+  font-weight: 700;
+}
+
+label {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+input[type="range"] {
+  writing-mode: bt-lr;
+  appearance: slider-vertical;
+  width: 38px;
+  height: 260px;
+  accent-color: #bef264;
+}
+
+.fx-wrap {
+  position: relative;
+  height: 260px;
+  width: 70px;
+  display: flex;
+  justify-content: center;
+}
+
+.fx-wrap input {
+  position: relative;
+  z-index: 2;
+}
+
+.fx-line {
+  position: absolute;
+  left: 4px;
+  right: 4px;
+  height: 1px;
+  background: rgba(255,255,255,0.55);
+  z-index: 1;
+}
+
+.fx-line.l1 { bottom: 33.33%; }
+.fx-line.l2 { bottom: 66.66%; }
+
+.fx-zone {
+  position: absolute;
+  right: -4px;
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: #e4e4e7;
+  opacity: 0.9;
+  z-index: 3;
+}
+
+.fx-zone.fade   { bottom: 5%;  }
+.fx-zone.toggle { bottom: 39%; }
+.fx-zone.strobe { bottom: 72%; }
+
+.fx-info {
+  margin-top: 16px;
+  background: rgba(24,24,27,0.28);
+  border-radius: 16px;
+  padding: 12px;
+  font-size: 14px;
+  line-height: 1.4;
+}
+</style>
+</head>
+
+<body>
+<div class="panel">
+  <div class="topbar">
+    <div class="title">PAR-WO Remote</div>
+    <button class="ble-status" id="bleStatus">BLE disconnected</button>
+  </div>
+
+  <div class="sliders">
+    <div class="slider-block">
+      <div class="value" id="whtVal">0</div>
+      <input id="wht" type="range" min="0" max="255" value="0">
+      <label>WHITE</label>
+    </div>
+
+    <div class="slider-block">
+      <div class="value" id="orgVal">0</div>
+      <input id="org" type="range" min="0" max="255" value="0">
+      <label>ORANGE</label>
+    </div>
+
+    <div class="slider-block">
+      <div class="value" id="mstVal">255</div>
+      <input id="mst" type="range" min="0" max="255" value="255">
+      <label>MASTER</label>
+    </div>
+
+    <div class="slider-block">
+      <div class="value" id="fxVal">0</div>
+
+      <div class="fx-wrap">
+        <input id="fx" type="range" min="0" max="255" value="0">
+
+        <div class="fx-line l1"></div>
+        <div class="fx-line l2"></div>
+
+        <div class="fx-zone fade">FADE</div>
+        <div class="fx-zone toggle">TOGGLE</div>
+        <div class="fx-zone strobe">STROBE</div>
+      </div>
+
+      <label>FX</label>
+    </div>
+  </div>
+
+  <div class="fx-info" id="fxInfo">FX:0 Static</div>
+</div>
+
+<script>
+const BLE_SERVICE_UUID = '19b10000-e8f2-537e-4f6c-d104768a1214';
+const BLE_STATE_CHAR_UUID = '19b10001-e8f2-537e-4f6c-d104768a1214';
+
+let bleDevice = null;
+let gattServer = null;
+let stateChar = null;
+let isConnecting = false;
+
+const state = {
+  white: 0,
+  orange: 0,
+  master: 255,
+  fx: 0
+};
+
+const sliders = {
+  white: document.getElementById('wht'),
+  orange: document.getElementById('org'),
+  master: document.getElementById('mst'),
+  fx: document.getElementById('fx')
+};
+
+const values = {
+  white: document.getElementById('whtVal'),
+  orange: document.getElementById('orgVal'),
+  master: document.getElementById('mstVal'),
+  fx: document.getElementById('fxVal')
+};
+
+const fxInfo = document.getElementById('fxInfo');
+const bleStatus = document.getElementById('bleStatus');
+
+function fxText(fx) {
+  if (fx == 0) return 'FX:0 Static WHT / ORG';
+  if (fx <= 85) return 'FX:' + fx + ' Fade séquentiel White → Orange, 0.1–1 Hz';
+  if (fx <= 170) return 'FX:' + fx + ' Toggle White / Orange, 0.5–5 Hz';
+  return 'FX:' + fx + ' Strobe White+Orange, 2–20 Hz';
+}
+
+function updateUI() {
+  sliders.white.value = state.white;
+  sliders.orange.value = state.orange;
+  sliders.master.value = state.master;
+  sliders.fx.value = state.fx;
+
+  values.white.textContent = state.white;
+  values.orange.textContent = state.orange;
+  values.master.textContent = state.master;
+  values.fx.textContent = state.fx;
+
+  fxInfo.textContent = fxText(state.fx);
+}
+
+function buildPayload() {
+  return new Uint8Array([
+    state.white,
+    state.orange,
+    state.master,
+    state.fx
+  ]);
+}
+
+function decodePayload(data) {
+  if (!data || data.length < 4) return;
+
+  state.white  = data[0];
+  state.orange = data[1];
+  state.master = data[2];
+  state.fx     = data[3];
+
+  updateUI();
+}
+
+
+async function requestCurrentState() {
+  if (!stateChar) return;
+
+  try {
+    const value = await stateChar.readValue();
+    const data = new Uint8Array(value.buffer.slice(0, 4));
+    decodePayload(data);
+  } catch (err) {
+    console.warn('Read failed', err);
+  }
+}
+
+function handleNotification(event) {
+  const value = event.target.value;
+  const data = new Uint8Array(value.buffer.slice(0, 4));
+  console.log('RX notify', data);
+  decodePayload(data);
+}
+
+function handleDisconnected() {
+  stateChar = null;
+  gattServer = null;
+  bleStatus.textContent = 'BLE disconnected';
+  bleStatus.classList.remove('connected');
+}
+
+async function connectBle() {
+  if (isConnecting) return;
+  isConnecting = true;
+  bleStatus.textContent = 'BLE connecting...';
+
+  try {
+    bleDevice = await navigator.bluetooth.requestDevice({
+      filters: [
+        { namePrefix: 'PAR-WO' },
+        { services: [BLE_SERVICE_UUID] }
+      ]
+    });
+
+    bleDevice.addEventListener('gattserverdisconnected', handleDisconnected);
+
+    gattServer = await bleDevice.gatt.connect();
+    const service = await gattServer.getPrimaryService(BLE_SERVICE_UUID);
+    stateChar = await service.getCharacteristic(BLE_STATE_CHAR_UUID);
+
+    try {
+      await stateChar.startNotifications();
+      stateChar.addEventListener('characteristicvaluechanged', handleNotification);
+    } catch (err) {
+      console.warn('Notifications unavailable', err);
+    }
+
+    bleStatus.textContent = 'BLE connected';
+    bleStatus.classList.add('connected');
+
+    await requestCurrentState();
+
+  } catch (err) {
+    console.error(err);
+    bleStatus.textContent = 'BLE disconnected';
+    bleStatus.classList.remove('connected');
+  } finally {
+    isConnecting = false;
+  }
+}
+
+async function toggleBle() {
+  if (!navigator.bluetooth) {
+    alert('Web Bluetooth non supporté. Utilise Chrome ou Edge en HTTPS.');
+    return;
+  }
+
+  if (gattServer?.connected && bleDevice?.gatt?.connected) {
+    bleDevice.gatt.disconnect();
+    return;
+  }
+
+  await connectBle();
+}
+
+sliders.white.addEventListener('input', e => {
+  state.white = Number(e.target.value);
+  scheduleSendState();
+});
+
+sliders.orange.addEventListener('input', e => {
+  state.orange = Number(e.target.value);
+  scheduleSendState();
+});
+
+sliders.master.addEventListener('input', e => {
+  state.master = Number(e.target.value);
+  scheduleSendState();
+});
+
+sliders.fx.addEventListener('input', e => {
+  state.fx = Number(e.target.value);
+  scheduleSendState();
+});
+
+bleStatus.addEventListener('click', toggleBle);
+
+let writeInProgress = false;
+let writeAgain = false;
+let sendTimer = null;
+
+function scheduleSendState() {
+  updateUI();
+
+  clearTimeout(sendTimer);
+
+  sendTimer = setTimeout(() => {
+    sendStateQueued();
+  }, 40);
+}
+
+async function sendStateQueued() {
+  if (!stateChar || !gattServer?.connected) {
+    return;
+  }
+
+  if (writeInProgress) {
+    writeAgain = true;
+    return;
+  }
+
+  writeInProgress = true;
+
+  try {
+
+    do {
+      writeAgain = false;
+
+      const payload = buildPayload();
+
+      console.log("TX", payload);
+
+      if (stateChar.writeValueWithResponse) {
+        await stateChar.writeValueWithResponse(payload);
+      } else {
+        await stateChar.writeValue(payload);
+      }
+
+    } while (writeAgain);
+
+  }
+  catch (err) {
+    console.error(err);
+
+    bleStatus.textContent = "BLE write error";
+    bleStatus.classList.remove("connected");
+  }
+  finally {
+    writeInProgress = false;
+  }
+}
+
+updateUI();
+</script>
+</body>
+</html>
