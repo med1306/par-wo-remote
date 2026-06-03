@@ -470,7 +470,13 @@ async function toggleBle() {
 }
 
 function setChannel(key, value) {
+
+  if (key === 'white' || key === 'orange') {
+    state.fx = 0;
+  }
+
   state[key] = clamp8(value);
+
   scheduleSendState();
 }
 
