@@ -51,6 +51,47 @@ body {
 
 .ble-status.connected { color: #86efac; }
 
+.connect-screen {
+  background: rgba(24,24,27,0.28);
+  border-radius: 20px;
+  padding: 26px 18px;
+  text-align: center;
+}
+
+.connect-title {
+  font-size: 22px;
+  font-weight: 800;
+  margin-bottom: 10px;
+}
+
+.connect-text {
+  color: #e4e4e7;
+  font-size: 14px;
+  line-height: 1.4;
+  margin-bottom: 22px;
+}
+
+.connect-btn {
+  appearance: none;
+  border: 1px solid #bef264;
+  background: linear-gradient(180deg, #383a2d 0%, #1f2119 100%);
+  color: #f7fee7;
+  border-radius: 18px;
+  font-size: 18px;
+  font-weight: 800;
+  padding: 16px 22px;
+  cursor: pointer;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.08),
+    inset 0 -4px 10px rgba(0,0,0,0.35),
+    0 0 0 2px rgba(190,242,100,0.18);
+}
+
+.connect-btn:active { transform: scale(0.98); }
+
+.controls { display: none; }
+.controls.visible { display: block; }
+
 .sliders {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
@@ -64,7 +105,8 @@ body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
+  min-width: 0;
 }
 
 .value {
@@ -78,17 +120,37 @@ label {
   letter-spacing: 0.04em;
 }
 
+.step-btn {
+  appearance: none;
+  width: 42px;
+  height: 42px;
+  border-radius: 999px;
+  border: 1px solid #4f4f46;
+  background: linear-gradient(180deg, #2d2e31 0%, #17181b 100%);
+  color: #fafafa;
+  font-size: 26px;
+  font-weight: 800;
+  line-height: 1;
+  cursor: pointer;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.08),
+    inset 0 -4px 10px rgba(0,0,0,0.35),
+    0 4px 10px rgba(0,0,0,0.25);
+}
+
+.step-btn:active { transform: scale(0.94); }
+
 input[type="range"] {
   writing-mode: bt-lr;
   appearance: slider-vertical;
   width: 38px;
-  height: 260px;
+  height: 230px;
   accent-color: #bef264;
 }
 
 .fx-wrap {
   position: relative;
-  height: 260px;
+  height: 230px;
   width: 70px;
   display: flex;
   justify-content: center;
@@ -122,19 +184,21 @@ input[type="range"] {
   color: #e4e4e7;
   opacity: 0.9;
   z-index: 3;
+  pointer-events: none;
 }
 
 .fx-zone.fade   { bottom: 5%;  }
 .fx-zone.toggle { bottom: 39%; }
 .fx-zone.strobe { bottom: 72%; }
 
-.fx-info {
-  margin-top: 16px;
-  background: rgba(24,24,27,0.28);
-  border-radius: 16px;
-  padding: 12px;
-  font-size: 14px;
-  line-height: 1.4;
+.hidden { display: none; }
+
+@media (max-width: 390px) {
+  .panel { padding: 14px; }
+  .sliders { gap: 8px; padding: 14px 6px; }
+  input[type="range"], .fx-wrap { height: 210px; }
+  .step-btn { width: 38px; height: 38px; }
+  label { font-size: 11px; }
 }
 </style>
 </head>
@@ -146,44 +210,60 @@ input[type="range"] {
     <button class="ble-status" id="bleStatus">BLE disconnected</button>
   </div>
 
-  <div class="sliders">
-    <div class="slider-block">
-      <div class="value" id="whtVal">0</div>
-      <input id="wht" type="range" min="0" max="255" value="0">
-      <label>WHITE</label>
+  <div class="connect-screen" id="connectScreen">
+    <div class="connect-title">Connexion BLE</div>
+    <div class="connect-text">
+      Connecte le PAR-WO avant d’afficher les commandes.
     </div>
-
-    <div class="slider-block">
-      <div class="value" id="orgVal">0</div>
-      <input id="org" type="range" min="0" max="255" value="0">
-      <label>ORANGE</label>
-    </div>
-
-    <div class="slider-block">
-      <div class="value" id="mstVal">255</div>
-      <input id="mst" type="range" min="0" max="255" value="255">
-      <label>MASTER</label>
-    </div>
-
-    <div class="slider-block">
-      <div class="value" id="fxVal">0</div>
-
-      <div class="fx-wrap">
-        <input id="fx" type="range" min="0" max="255" value="0">
-
-        <div class="fx-line l1"></div>
-        <div class="fx-line l2"></div>
-
-        <div class="fx-zone fade">FADE</div>
-        <div class="fx-zone toggle">TOGGLE</div>
-        <div class="fx-zone strobe">STROBE</div>
-      </div>
-
-      <label>FX</label>
-    </div>
+    <button class="connect-btn" id="connectBtn" type="button">CONNECT PAR-WO</button>
   </div>
 
-  <div class="fx-info" id="fxInfo">FX:0 Static</div>
+  <div class="controls" id="controls">
+    <div class="sliders">
+      <div class="slider-block">
+        <div class="value" id="whtVal">0</div>
+        <button class="step-btn" type="button" data-key="white" data-delta="1">+</button>
+        <input id="wht" type="range" min="0" max="255" value="0">
+        <button class="step-btn" type="button" data-key="white" data-delta="-1">−</button>
+        <label>WHITE</label>
+      </div>
+
+      <div class="slider-block">
+        <div class="value" id="orgVal">0</div>
+        <button class="step-btn" type="button" data-key="orange" data-delta="1">+</button>
+        <input id="org" type="range" min="0" max="255" value="0">
+        <button class="step-btn" type="button" data-key="orange" data-delta="-1">−</button>
+        <label>ORANGE</label>
+      </div>
+
+      <div class="slider-block">
+        <div class="value" id="mstVal">255</div>
+        <button class="step-btn" type="button" data-key="master" data-delta="1">+</button>
+        <input id="mst" type="range" min="0" max="255" value="255">
+        <button class="step-btn" type="button" data-key="master" data-delta="-1">−</button>
+        <label>MASTER</label>
+      </div>
+
+      <div class="slider-block">
+        <div class="value" id="fxVal">0</div>
+        <button class="step-btn" type="button" data-key="fx" data-delta="1">+</button>
+
+        <div class="fx-wrap">
+          <input id="fx" type="range" min="0" max="255" value="0">
+
+          <div class="fx-line l1"></div>
+          <div class="fx-line l2"></div>
+
+          <div class="fx-zone fade">FADE</div>
+          <div class="fx-zone toggle">TOGGLE</div>
+          <div class="fx-zone strobe">STROBE</div>
+        </div>
+
+        <button class="step-btn" type="button" data-key="fx" data-delta="-1">−</button>
+        <label>FX</label>
+      </div>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -194,6 +274,10 @@ let bleDevice = null;
 let gattServer = null;
 let stateChar = null;
 let isConnecting = false;
+
+let writeInProgress = false;
+let writeAgain = false;
+let sendTimer = null;
 
 const state = {
   white: 0,
@@ -216,14 +300,20 @@ const values = {
   fx: document.getElementById('fxVal')
 };
 
-const fxInfo = document.getElementById('fxInfo');
 const bleStatus = document.getElementById('bleStatus');
+const connectBtn = document.getElementById('connectBtn');
+const connectScreen = document.getElementById('connectScreen');
+const controls = document.getElementById('controls');
 
-function fxText(fx) {
-  if (fx == 0) return 'FX:0 Static WHT / ORG';
-  if (fx <= 85) return 'FX:' + fx + ' Fade séquentiel White → Orange, 0.1–1 Hz';
-  if (fx <= 170) return 'FX:' + fx + ' Toggle White / Orange, 0.5–5 Hz';
-  return 'FX:' + fx + ' Strobe White+Orange, 2–20 Hz';
+function clamp8(v) {
+  return Math.max(0, Math.min(255, Number(v) || 0));
+}
+
+function setConnectedUI(connected) {
+  bleStatus.textContent = connected ? 'BLE connected' : 'BLE disconnected';
+  bleStatus.classList.toggle('connected', connected);
+  connectScreen.classList.toggle('hidden', connected);
+  controls.classList.toggle('visible', connected);
 }
 
 function updateUI() {
@@ -236,8 +326,6 @@ function updateUI() {
   values.orange.textContent = state.orange;
   values.master.textContent = state.master;
   values.fx.textContent = state.fx;
-
-  fxInfo.textContent = fxText(state.fx);
 }
 
 function buildPayload() {
@@ -260,6 +348,48 @@ function decodePayload(data) {
   updateUI();
 }
 
+function scheduleSendState() {
+  updateUI();
+
+  clearTimeout(sendTimer);
+
+  sendTimer = setTimeout(() => {
+    sendStateQueued();
+  }, 40);
+}
+
+async function sendStateQueued() {
+  if (!stateChar || !gattServer?.connected) return;
+
+  if (writeInProgress) {
+    writeAgain = true;
+    return;
+  }
+
+  writeInProgress = true;
+
+  try {
+    do {
+      writeAgain = false;
+
+      const payload = buildPayload();
+
+      if (stateChar.writeValueWithResponse) {
+        await stateChar.writeValueWithResponse(payload);
+      } else {
+        await stateChar.writeValue(payload);
+      }
+
+    } while (writeAgain);
+
+  } catch (err) {
+    console.error(err);
+    bleStatus.textContent = 'BLE write error';
+    bleStatus.classList.remove('connected');
+  } finally {
+    writeInProgress = false;
+  }
+}
 
 async function requestCurrentState() {
   if (!stateChar) return;
@@ -276,21 +406,26 @@ async function requestCurrentState() {
 function handleNotification(event) {
   const value = event.target.value;
   const data = new Uint8Array(value.buffer.slice(0, 4));
-  console.log('RX notify', data);
   decodePayload(data);
 }
 
 function handleDisconnected() {
   stateChar = null;
   gattServer = null;
-  bleStatus.textContent = 'BLE disconnected';
-  bleStatus.classList.remove('connected');
+  setConnectedUI(false);
 }
 
 async function connectBle() {
   if (isConnecting) return;
+
+  if (!navigator.bluetooth) {
+    alert('Web Bluetooth non supporté. Utilise Chrome ou Edge en HTTPS.');
+    return;
+  }
+
   isConnecting = true;
   bleStatus.textContent = 'BLE connecting...';
+  connectBtn.textContent = 'CONNECTING...';
 
   try {
     bleDevice = await navigator.bluetooth.requestDevice({
@@ -313,26 +448,19 @@ async function connectBle() {
       console.warn('Notifications unavailable', err);
     }
 
-    bleStatus.textContent = 'BLE connected';
-    bleStatus.classList.add('connected');
-
+    setConnectedUI(true);
     await requestCurrentState();
 
   } catch (err) {
     console.error(err);
-    bleStatus.textContent = 'BLE disconnected';
-    bleStatus.classList.remove('connected');
+    setConnectedUI(false);
   } finally {
     isConnecting = false;
+    connectBtn.textContent = 'CONNECT PAR-WO';
   }
 }
 
 async function toggleBle() {
-  if (!navigator.bluetooth) {
-    alert('Web Bluetooth non supporté. Utilise Chrome ou Edge en HTTPS.');
-    return;
-  }
-
   if (gattServer?.connected && bleDevice?.gatt?.connected) {
     bleDevice.gatt.disconnect();
     return;
@@ -341,84 +469,29 @@ async function toggleBle() {
   await connectBle();
 }
 
-sliders.white.addEventListener('input', e => {
-  state.white = Number(e.target.value);
+function setChannel(key, value) {
+  state[key] = clamp8(value);
   scheduleSendState();
-});
+}
 
-sliders.orange.addEventListener('input', e => {
-  state.orange = Number(e.target.value);
-  scheduleSendState();
-});
+sliders.white.addEventListener('input', e => setChannel('white', e.target.value));
+sliders.orange.addEventListener('input', e => setChannel('orange', e.target.value));
+sliders.master.addEventListener('input', e => setChannel('master', e.target.value));
+sliders.fx.addEventListener('input', e => setChannel('fx', e.target.value));
 
-sliders.master.addEventListener('input', e => {
-  state.master = Number(e.target.value);
-  scheduleSendState();
-});
-
-sliders.fx.addEventListener('input', e => {
-  state.fx = Number(e.target.value);
-  scheduleSendState();
+document.querySelectorAll('.step-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const key = btn.dataset.key;
+    const delta = Number(btn.dataset.delta);
+    setChannel(key, state[key] + delta);
+  });
 });
 
 bleStatus.addEventListener('click', toggleBle);
-
-let writeInProgress = false;
-let writeAgain = false;
-let sendTimer = null;
-
-function scheduleSendState() {
-  updateUI();
-
-  clearTimeout(sendTimer);
-
-  sendTimer = setTimeout(() => {
-    sendStateQueued();
-  }, 40);
-}
-
-async function sendStateQueued() {
-  if (!stateChar || !gattServer?.connected) {
-    return;
-  }
-
-  if (writeInProgress) {
-    writeAgain = true;
-    return;
-  }
-
-  writeInProgress = true;
-
-  try {
-
-    do {
-      writeAgain = false;
-
-      const payload = buildPayload();
-
-      console.log("TX", payload);
-
-      if (stateChar.writeValueWithResponse) {
-        await stateChar.writeValueWithResponse(payload);
-      } else {
-        await stateChar.writeValue(payload);
-      }
-
-    } while (writeAgain);
-
-  }
-  catch (err) {
-    console.error(err);
-
-    bleStatus.textContent = "BLE write error";
-    bleStatus.classList.remove("connected");
-  }
-  finally {
-    writeInProgress = false;
-  }
-}
+connectBtn.addEventListener('click', connectBle);
 
 updateUI();
+setConnectedUI(false);
 </script>
 </body>
 </html>
