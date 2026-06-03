@@ -204,11 +204,6 @@ input[type="range"] {
 }
 </style>
 </head>
-<script>
-if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('./sw.js');
-}
-</script>
 <body>
 <div class="panel">
   <div class="topbar">
@@ -504,6 +499,10 @@ connectBtn.addEventListener('click', connectBle);
 
 updateUI();
 setConnectedUI(false);
+
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('./sw.js');
+}
 </script>
 </body>
 </html>
