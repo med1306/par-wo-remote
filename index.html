@@ -1,6 +1,8 @@
 <!doctype html>
 <html lang="fr">
 <head>
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#18181b">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>PAR-WO BLE</title>
@@ -202,7 +204,11 @@ input[type="range"] {
 }
 </style>
 </head>
-
+<script>
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('./sw.js');
+}
+</script>
 <body>
 <div class="panel">
   <div class="topbar">
